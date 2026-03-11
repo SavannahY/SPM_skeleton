@@ -26,18 +26,20 @@ THETA_P_100 = 0.267963982283029
 COLORS = {
     "FDM": "#0072B2",
     "FVM-S2": "#7A3E9D",
-    "PADE2": "#4DBBD5",
-    "PADE3": "#8B1E3F",
+    "Nonlinear SPM-Padé 2": "#4DBBD5",
+    "Nonlinear SPM-Padé 3": "#8B1E3F",
+    "Local Linear Padé-ECM": "#009E73",
 }
 
 MARKERS = {
     "FDM": "o",
     "FVM-S2": "^",
-    "PADE2": "v",
-    "PADE3": ">",
+    "Nonlinear SPM-Padé 2": "v",
+    "Nonlinear SPM-Padé 3": ">",
+    "Local Linear Padé-ECM": "p",
 }
 
-FOCUS_METHODS = ["FDM", "FVM-S2", "PADE2", "PADE3"]
+FOCUS_METHODS = ["FDM", "FVM-S2", "Nonlinear SPM-Padé 2", "Local Linear Padé-ECM"]
 
 
 def setup_style() -> None:

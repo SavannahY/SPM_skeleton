@@ -43,7 +43,7 @@ function [theta_s_n_ave, theta_s_p_ave] = volume_average(theta_s_n, theta_s_p, p
             theta_s_n_ave = (w_n.' * theta_s_n).';
             theta_s_p_ave = (w_p.' * theta_s_p).';
 
-        case {'PADE2','PADE3'}
+        case {'PADE2','PADE3','LLPADEECM'}
             % For Padé, theta_s_n / theta_s_p are already average quantities
             theta_s_n_ave = theta_s_n(:);
             theta_s_p_ave = theta_s_p(:);

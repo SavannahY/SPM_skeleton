@@ -8,8 +8,9 @@ function n_states = utils_n_states(param)
 %   Supported methods:
 %       'FDM'   - Finite Difference Method
 %       'FVM'   - Finite Volume Method
-%       'PADE2' - 2nd order Padé reduced diffusion model
-%       'PADE3' - 3rd order Padé reduced diffusion model
+%       'PADE2' - 2nd order Nonlinear SPM-Padé model
+%       'PADE3' - 3rd order Nonlinear SPM-Padé model
+%       'LLPADEECM' - Local Linear Padé-ECM model
 %
 %   Inputs:
 %       param.method
@@ -39,6 +40,12 @@ function n_states = utils_n_states(param)
             % Padé order 3:
             %   1 average concentration
             %   3 diffusion deviation states
+            n_states = 4;
+
+        case 'LLPADEECM'
+            % Local Linear Padé-ECM:
+            %   3 anode deviation states + average concentration
+            % per electrode-equivalent block
             n_states = 4;
 
         otherwise
