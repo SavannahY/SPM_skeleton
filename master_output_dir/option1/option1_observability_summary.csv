@@ -1,0 +1,7 @@
+method,Nr,total_states,min_rank,max_rank,full_rank_fraction,min_sigma_min,median_condition_number,max_condition_number
+FDM,12,24,19,19,0,0,Inf,Inf
+FVM-S0,12,22,19,19,0,1.569177310001e-23,Inf,Inf
+FVM-S1,12,22,19,19,0,6.63608195384574e-22,Inf,Inf
+FVM-S2,12,22,19,19,0,5.2434804588753e-21,Inf,Inf
+PADE2,12,6,3,3,0,6.91382359973206e-27,Inf,Inf
+PADE3,12,8,4,4,0,5.00101451334991e-30,Inf,Inf
