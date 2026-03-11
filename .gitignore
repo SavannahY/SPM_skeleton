@@ -3,3 +3,10 @@
 master_output_dir/
 casadi/
 *.zip
+final/*
+!final/README_first_principles_ecm.md
+!final/cell_model/
+final/cell_model/*
+!final/cell_model/pade_spm_coeffs.m
+!final/cell_model/run_first_principles_ecm_casadi.m
+!final/cell_model/dUdtheta_fd.m
