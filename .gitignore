@@ -1,0 +1,5 @@
+.DS_Store
+.venv/
+master_output_dir/
+casadi/
+*.zip
