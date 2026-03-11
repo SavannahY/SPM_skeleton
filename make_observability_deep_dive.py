@@ -130,11 +130,17 @@ def make_ocp_slope_full_soc(obs_by_method) -> None:
 
     fig, ax = plt.subplots(figsize=(8.8, 5.8))
     clean_axes(ax)
-    ax.plot(soc, slope_metric, color="black", lw=3.0)
-    ax.axvspan(soc_min, soc_max, color="#B0B0B0", alpha=0.18, label="HPPC operating window")
+    ax.plot(soc, slope_metric, color="black", lw=3.0, label="Black curve = model-wide OCP slope")
+    ax.axvspan(
+        soc_min,
+        soc_max,
+        color="#B0B0B0",
+        alpha=0.18,
+        label="Gray band = SOC visited by HPPC trajectory",
+    )
     ax.set_xlabel("SOC [-]")
     ax.set_ylabel(r"$|dU_p/dSOC - dU_n/dSOC|$")
-    ax.set_title("OCP Slope Metric Across the Full SOC Range")
+    ax.set_title("Model-Based OCP Slope Over Full SOC with HPPC Operating Window")
     ax.legend(loc="best")
     save_figure(fig, FIG_DIR / "obs_fig1_ocp_slope_full_soc.png")
 
