@@ -56,6 +56,7 @@ end
 
 save(fullfile(output_dir,'observability_deep_dive_metrics.mat'),'deep_metrics','-v7.3');
 write_deep_metrics_csv(deep_metrics, fullfile(output_dir,'observability_deep_dive_timeseries.csv'));
+plot_pade_normalized_vs_raw(deep_metrics, output_dir);
 fprintf('Saved deep-dive observability metrics to %s\n', fullfile(output_dir,'observability_deep_dive_metrics.mat'));
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -114,8 +115,13 @@ rank_hist = zeros(num_t,1);
 sigma_min_hist = zeros(num_t,1);
 sigma_min_nz_hist = zeros(num_t,1);
 effective_rank_hist = zeros(num_t,1);
+rank_raw_hist = zeros(num_t,1);
+sigma_min_raw_hist = zeros(num_t,1);
+sigma_min_nz_raw_hist = zeros(num_t,1);
+effective_rank_raw_hist = zeros(num_t,1);
 ocp_slope_metric = zeros(num_t,1);
 singular_values = zeros(num_t,n);
+singular_values_raw = zeros(num_t,n);
 
 for k = 1:num_t
     I_k = all_data.I(k);
@@ -161,6 +167,39 @@ for k = 1:num_t
         effective_rank_hist(k) = exp(-sum(p .* log(p)));
     end
 
+    O_raw = zeros(n,n);
+    row_vec_raw = full(Ck);
+    row_vec_raw(~isfinite(row_vec_raw)) = 0.0;
+    O_raw(1,:) = row_vec_raw;
+    for i_row = 2:n
+        row_vec_raw = O_raw(i_row-1,:) * A;
+        row_vec_raw = full(row_vec_raw);
+        row_vec_raw(~isfinite(row_vec_raw)) = 0.0;
+        O_raw(i_row,:) = row_vec_raw;
+    end
+
+    s_raw = svd(O_raw);
+    singular_values_raw(k,:) = s_raw(:).';
+
+    tol_raw = max(size(O_raw)) * eps(max(s_raw));
+    rank_raw_hist(k) = sum(s_raw > tol_raw);
+    sigma_min_raw_hist(k) = s_raw(end);
+
+    nonzero_s_raw = s_raw(s_raw > tol_raw);
+    if isempty(nonzero_s_raw)
+        sigma_min_nz_raw_hist(k) = 0.0;
+    else
+        sigma_min_nz_raw_hist(k) = nonzero_s_raw(end);
+    end
+
+    if sum(s_raw) <= 0
+        effective_rank_raw_hist(k) = 0.0;
+    else
+        p_raw = s_raw / sum(s_raw);
+        p_raw = p_raw(p_raw > 0);
+        effective_rank_raw_hist(k) = exp(-sum(p_raw .* log(p_raw)));
+    end
+
     ocp_slope_metric(k) = abs(dUp_dtheta - dUn_dtheta);
 end
 
@@ -173,8 +212,13 @@ deep.rank = rank_hist;
 deep.sigma_min = sigma_min_hist;
 deep.sigma_min_nonzero = sigma_min_nz_hist;
 deep.effective_rank = effective_rank_hist;
+deep.rank_raw = rank_raw_hist;
+deep.sigma_min_raw = sigma_min_raw_hist;
+deep.sigma_min_nonzero_raw = sigma_min_nz_raw_hist;
+deep.effective_rank_raw = effective_rank_raw_hist;
 deep.ocp_slope_metric = ocp_slope_metric;
 deep.singular_values = singular_values;
+deep.singular_values_raw = singular_values_raw;
 end
 
 function [surf_map_n, surf_map_p] = build_surface_maps(case_result)
@@ -252,6 +296,10 @@ rank_col = [];
 sigma_min_col = [];
 sigma_min_nz_col = [];
 effective_rank_col = [];
+rank_raw_col = [];
+sigma_min_raw_col = [];
+sigma_min_nz_raw_col = [];
+effective_rank_raw_col = [];
 ocp_slope_col = [];
 
 for i = 1:numel(deep_metrics)
@@ -265,10 +313,80 @@ for i = 1:numel(deep_metrics)
     sigma_min_col = [sigma_min_col; dm.sigma_min(:)]; %#ok<AGROW>
     sigma_min_nz_col = [sigma_min_nz_col; dm.sigma_min_nonzero(:)]; %#ok<AGROW>
     effective_rank_col = [effective_rank_col; dm.effective_rank(:)]; %#ok<AGROW>
+    rank_raw_col = [rank_raw_col; dm.rank_raw(:)]; %#ok<AGROW>
+    sigma_min_raw_col = [sigma_min_raw_col; dm.sigma_min_raw(:)]; %#ok<AGROW>
+    sigma_min_nz_raw_col = [sigma_min_nz_raw_col; dm.sigma_min_nonzero_raw(:)]; %#ok<AGROW>
+    effective_rank_raw_col = [effective_rank_raw_col; dm.effective_rank_raw(:)]; %#ok<AGROW>
     ocp_slope_col = [ocp_slope_col; dm.ocp_slope_metric(:)]; %#ok<AGROW>
 end
 
-T = table(method_col, t_col, soc_col, rank_col, sigma_min_col, sigma_min_nz_col, effective_rank_col, ocp_slope_col, ...
-    'VariableNames', {'method','t','soc_ref','rank','sigma_min','sigma_min_nonzero','effective_rank','ocp_slope_metric'});
+T = table(method_col, t_col, soc_col, rank_col, sigma_min_col, sigma_min_nz_col, effective_rank_col, ...
+    rank_raw_col, sigma_min_raw_col, sigma_min_nz_raw_col, effective_rank_raw_col, ocp_slope_col, ...
+    'VariableNames', {'method','t','soc_ref','rank','sigma_min','sigma_min_nonzero','effective_rank', ...
+    'rank_raw','sigma_min_raw','sigma_min_nonzero_raw','effective_rank_raw','ocp_slope_metric'});
 writetable(T, csv_path);
+end
+
+function plot_pade_normalized_vs_raw(deep_metrics, output_dir)
+fig_dir = fullfile(output_dir, 'observability_deep_dive');
+if exist(fig_dir, 'dir') ~= 7
+    mkdir(fig_dir);
+end
+
+pade_methods = { ...
+    'Local Linear Padé-ECM', ...
+    'Nonlinear SPM-Padé 2', ...
+    'Nonlinear SPM-Padé 3'};
+colors = [ ...
+    0.00, 0.60, 0.45; ...
+    0.30, 0.75, 0.90; ...
+    0.60, 0.15, 0.30];
+
+fig = figure('Color', 'w', 'Position', [100, 100, 1200, 480]);
+tiledlayout(1,2,'TileSpacing','compact','Padding','compact');
+
+nexttile;
+hold on;
+for i = 1:numel(pade_methods)
+    dm = select_method(deep_metrics, pade_methods{i});
+    plot(dm.soc_ref, dm.rank, '-', 'LineWidth', 2.0, 'Color', colors(i,:));
+    plot(dm.soc_ref, dm.rank_raw, '--', 'LineWidth', 2.0, 'Color', colors(i,:));
+end
+set(gca, 'XDir', 'reverse', 'FontSize', 12, 'LineWidth', 1.0);
+xlabel('SOC [-]', 'FontSize', 16, 'FontWeight', 'bold');
+ylabel('Observability rank', 'FontSize', 16, 'FontWeight', 'bold');
+title('Padé Family: Normalized vs Raw Rank', 'FontSize', 20, 'FontWeight', 'bold');
+grid on;
+legend({ ...
+    'Local Linear Padé-ECM (normalized)', ...
+    'Local Linear Padé-ECM (raw)', ...
+    'Nonlinear SPM-Padé 2 (normalized)', ...
+    'Nonlinear SPM-Padé 2 (raw)', ...
+    'Nonlinear SPM-Padé 3 (normalized)', ...
+    'Nonlinear SPM-Padé 3 (raw)'}, ...
+    'Location', 'eastoutside', 'FontSize', 11);
+
+nexttile;
+hold on;
+for i = 1:numel(pade_methods)
+    dm = select_method(deep_metrics, pade_methods{i});
+    plot(dm.soc_ref, dm.effective_rank, '-', 'LineWidth', 2.0, 'Color', colors(i,:));
+    plot(dm.soc_ref, dm.effective_rank_raw, '--', 'LineWidth', 2.0, 'Color', colors(i,:));
+end
+set(gca, 'XDir', 'reverse', 'FontSize', 12, 'LineWidth', 1.0);
+xlabel('SOC [-]', 'FontSize', 16, 'FontWeight', 'bold');
+ylabel('Effective rank', 'FontSize', 16, 'FontWeight', 'bold');
+title('Padé Family: Normalized vs Raw Effective Rank', 'FontSize', 20, 'FontWeight', 'bold');
+grid on;
+
+exportgraphics(fig, fullfile(fig_dir, 'obs_fig9_pade_normalized_vs_raw.png'), 'Resolution', 200);
+close(fig);
+end
+
+function dm = select_method(deep_metrics, method_label)
+idx = find(strcmp({deep_metrics.method}, method_label), 1, 'first');
+if isempty(idx)
+    error('Method %s not found in deep metrics.', method_label);
+end
+dm = deep_metrics(idx);
 end
