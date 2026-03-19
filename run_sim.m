@@ -42,18 +42,18 @@ close all;
 
 
 %% PATH SETUP
-% 1. 恢复默认路径，防止路径冲突
+% 1. Restore the default MATLAB path to avoid path conflicts
 restoredefaultpath; 
 clear all; clc; close all;
 
-% 2. 添加你的 CasADi 真实绝对路径 (这是最关键的一步)
+% 2. Add the actual CasADi absolute path used on this machine
 
 addpath(genpath('/Users/zhengjieyang/Documents/MATLAB/SPM_skeleton/casadi-3.7.2-osx_arm64-matlab2018b'));
 
 % casadi_dir = 'C:\Users\86189\Desktop\Stanford courses\295\SPM_skeleton\SPM_skeleton\casadi-3.7.2-windows64-matlab2018b';
 % addpath(casadi_dir);
 
-% 3. 添加项目自带的函数文件夹
+% 3. Add the project code folders
 addpath('./cell_model');
 addpath('./utils');
 
@@ -85,9 +85,9 @@ Tend = inf;  % [s]
 % Specify test profile identifier for output file naming
 solver_opts.dchg_type_str = 'HPPC';  % 'HPPC', 'UDDS', '1C', etc.
 
-% 将文件名改为 data_C20.mat 即可进行恒流仿真
+% Change the filename to data_Co20.mat to run the constant-current case
 %[t_data, I_data, V_data, solver_opts] = load_data('./data/data_Co20.mat', dt, Tend);
-%solver_opts.dchg_type_str = 'C20'; % 建议同步修改标识符，方便保存结果
+%solver_opts.dchg_type_str = 'C20'; % Update the identifier as well for cleaner saved outputs
 
 
 
@@ -178,23 +178,23 @@ plot_results(all_data);
 %% ================== PART 2: PHYSICAL CONSTRAINTS & VALIDATION ==================
 fprintf('\n--- Physical Constraints & Validation Report ---\n');
 
-% 1. 浓度越界检查 (使用 sol 结构体，确保字段存在)
-% 检查负极浓度是否在 [0, csn_max] 之间 [cite: 123]
+% 1. Concentration bounds check (using the sol structure)
+% Check whether negative-electrode concentration stays within [0, csn_max]
 csn_min = min(sol.cs_n(:)); 
 csn_max_sim = max(sol.cs_n(:));
-csn_limit = params.csn_max; % 应该是 29583 [cite: 183]
+csn_limit = params.csn_max; % expected value: 29583 [mol/m^3]
 
-% 检查正极浓度是否在 [0, csp_max] 之间 [cite: 123]
+% Check whether positive-electrode concentration stays within [0, csp_max]
 csp_min = min(sol.cs_p(:));
 csp_max_sim = max(sol.cs_p(:));
-csp_limit = params.csp_max; % 应该是 51765 [cite: 183]
+csp_limit = params.csp_max; % expected value: 51765 [mol/m^3]
 
 fprintf('Negative electrode concentration range: [%.2f, %.2f] mol/m^3 (Limit: %d)\n', ...
     csn_min, csn_max_sim, csn_limit);
 fprintf('Positive electrode concentration range: [%.2f, %.2f] mol/m^3 (Limit: %d)\n', ...
     csp_min, csp_max_sim, csp_limit);
 
-% 验证逻辑
+% Validation logic
 if csn_min < -1e-6 || csn_max_sim > csn_limit + 1e-6 || ...
    csp_min < -1e-6 || csp_max_sim > csp_limit + 1e-6
     fprintf('Result: [FAILED] Concentration violated physical bounds!\n');
@@ -202,7 +202,7 @@ else
     fprintf('Result: [PASSED] Concentration within physical bounds.\n');
 end
 
-% 2. 锂守恒检查 (Lithium Conservation)
+% 2. Lithium conservation check
 % Vol_n = params.Acell * params.Ln * params.epsn; 
 % Vol_p = params.Acell * params.Lp * params.epsp;
 % 
