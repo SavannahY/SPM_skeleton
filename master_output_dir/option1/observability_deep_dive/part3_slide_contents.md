@@ -169,7 +169,7 @@ Cross-Family Comparison: Accuracy Does Not Equal Observability
 
 ### Figure(s)
 - `master_output_dir/option1/observability_deep_dive/obs_fig7_representative_rmse_bar.png`
-- `master_output_dir/option1/observability_deep_dive/obs_fig8_accuracy_vs_observability.png`
+- `master_output_dir/option1/observability_deep_dive/obs_fig9_accuracy_vs_observability.png`
 - `master_output_dir/option1/observability_deep_dive/obs_fig8_effective_rank_vs_soc.png`
 
 ### Result to say
@@ -211,7 +211,7 @@ Close with the ideal-versus-reality message: in theory, complete observability m
 - `master_output_dir/option1/observability_deep_dive/obs_fig5_pade_rank_vs_soc.png`
 - `master_output_dir/option1/observability_deep_dive/obs_fig6_pade_effective_rank_vs_soc.png`
 - `master_output_dir/option1/observability_deep_dive/obs_fig7_representative_rmse_bar.png`
-- `master_output_dir/option1/observability_deep_dive/obs_fig8_accuracy_vs_observability.png`
+- `master_output_dir/option1/observability_deep_dive/obs_fig9_accuracy_vs_observability.png`
 - `master_output_dir/option1/observability_deep_dive/obs_fig8_effective_rank_vs_soc.png`
 
 ## Prompt for another slide-making tool
@@ -236,7 +236,7 @@ Use these figures exactly where indicated in the markdown:
 - obs_fig5_pade_rank_vs_soc.png
 - obs_fig6_pade_effective_rank_vs_soc.png
 - obs_fig7_representative_rmse_bar.png
-- obs_fig8_accuracy_vs_observability.png
+- obs_fig9_accuracy_vs_observability.png
 - obs_fig8_effective_rank_vs_soc.png
 
 Design requirements:

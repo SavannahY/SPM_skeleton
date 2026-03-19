@@ -5,12 +5,10 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from scipy.io import loadmat
 
 ROOT = Path(__file__).resolve().parent
 OUT_DIR = ROOT / "master_output_dir" / "option1"
 FIG_DIR = OUT_DIR / "observability_deep_dive"
-MAT_PATH = OUT_DIR / "option1_metrics_and_results.mat"
 DEEP_CSV = OUT_DIR / "observability_deep_dive_timeseries.csv"
 METRICS_CSV = OUT_DIR / "option1_metrics.csv"
 SWEEP_CSV = OUT_DIR / "option1_observability_sweep_summary.csv"
@@ -102,11 +100,6 @@ def theta_from_soc(soc: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     return theta_n, theta_p
 
 
-def load_observability_results():
-    mat = loadmat(MAT_PATH, squeeze_me=True, struct_as_record=False)
-    obs = np.atleast_1d(mat["observability_results"])
-    return {str(item.method): item for item in obs}
-
 def load_deep_observability_results() -> pd.DataFrame:
     return pd.read_csv(DEEP_CSV)
 
@@ -116,15 +109,15 @@ def save_figure(fig: plt.Figure, path: Path) -> None:
     plt.close(fig)
 
 
-def make_ocp_slope_full_soc(obs_by_method) -> None:
+def make_ocp_slope_full_soc(deep_df: pd.DataFrame) -> None:
     soc = np.linspace(0.0, 1.0, 700)
     theta_n, theta_p = theta_from_soc(soc)
     un = u_n(theta_n)
     up = u_p(theta_p)
     slope_metric = np.abs(np.gradient(up, soc) - np.gradient(un, soc))
 
-    obs_sample = obs_by_method["FDM"]
-    soc_ref = np.asarray(obs_sample.soc_ref).reshape(-1)
+    obs_sample = deep_df[deep_df["method"] == "FDM"]
+    soc_ref = obs_sample["soc_ref"].to_numpy()
     soc_min = float(soc_ref.min())
     soc_max = float(soc_ref.max())
 
@@ -145,12 +138,12 @@ def make_ocp_slope_full_soc(obs_by_method) -> None:
     save_figure(fig, FIG_DIR / "obs_fig1_ocp_slope_full_soc.png")
 
 
-def make_spm_rank_vs_soc(obs_by_method) -> None:
+def make_spm_rank_vs_soc(deep_df: pd.DataFrame) -> None:
     fig, ax = plt.subplots(figsize=(8.8, 5.8))
     for method in SPM_METHODS:
-        obs = obs_by_method[method]
-        soc = np.asarray(obs.soc_ref).reshape(-1)
-        rank = np.asarray(obs.rank).reshape(-1)
+        obs = deep_df[deep_df["method"] == method]
+        soc = obs["soc_ref"].to_numpy()
+        rank = obs["rank"].to_numpy()
         ax.plot(soc, rank, color=COLORS[method], lw=2.4, label=method)
     clean_axes(ax)
     ax.invert_xaxis()
@@ -199,12 +192,12 @@ def make_spm_rank_fraction_vs_states(sweep_df: pd.DataFrame) -> None:
     save_figure(fig, FIG_DIR / "obs_fig4_spm_rank_fraction_vs_states.png")
 
 
-def make_pade_rank_vs_soc(obs_by_method) -> None:
+def make_pade_rank_vs_soc(deep_df: pd.DataFrame) -> None:
     fig, ax = plt.subplots(figsize=(8.8, 5.8))
     for method in PADE_METHODS:
-        obs = obs_by_method[method]
-        soc = np.asarray(obs.soc_ref).reshape(-1)
-        rank = np.asarray(obs.rank).reshape(-1)
+        obs = deep_df[deep_df["method"] == method]
+        soc = obs["soc_ref"].to_numpy()
+        rank = obs["rank"].to_numpy()
         ax.plot(soc, rank, color=COLORS[method], lw=2.6, label=method)
     clean_axes(ax)
     ax.invert_xaxis()
@@ -306,7 +299,7 @@ def make_accuracy_vs_observability(metrics_df: pd.DataFrame) -> None:
     ax.set_ylabel("Voltage RMSE vs experiment [mV]")
     ax.set_title("Accuracy–Observability Tradeoff Across Model Families")
     ax.legend(loc="best", fontsize=11)
-    save_figure(fig, FIG_DIR / "obs_fig8_accuracy_vs_observability.png")
+    save_figure(fig, FIG_DIR / "obs_fig9_accuracy_vs_observability.png")
 
 
 def write_part3_slide_content() -> None:
@@ -481,7 +474,7 @@ Cross-Family Comparison: Accuracy Does Not Equal Observability
 
 ### Figure(s)
 - `master_output_dir/option1/observability_deep_dive/obs_fig7_representative_rmse_bar.png`
-- `master_output_dir/option1/observability_deep_dive/obs_fig8_accuracy_vs_observability.png`
+- `master_output_dir/option1/observability_deep_dive/obs_fig9_accuracy_vs_observability.png`
 - `master_output_dir/option1/observability_deep_dive/obs_fig8_effective_rank_vs_soc.png`
 
 ### Result to say
@@ -523,7 +516,7 @@ Close with the ideal-versus-reality message: in theory, complete observability m
 - `master_output_dir/option1/observability_deep_dive/obs_fig5_pade_rank_vs_soc.png`
 - `master_output_dir/option1/observability_deep_dive/obs_fig6_pade_effective_rank_vs_soc.png`
 - `master_output_dir/option1/observability_deep_dive/obs_fig7_representative_rmse_bar.png`
-- `master_output_dir/option1/observability_deep_dive/obs_fig8_accuracy_vs_observability.png`
+- `master_output_dir/option1/observability_deep_dive/obs_fig9_accuracy_vs_observability.png`
 - `master_output_dir/option1/observability_deep_dive/obs_fig8_effective_rank_vs_soc.png`
 
 ## Prompt for another slide-making tool
@@ -548,7 +541,7 @@ Use these figures exactly where indicated in the markdown:
 - obs_fig5_pade_rank_vs_soc.png
 - obs_fig6_pade_effective_rank_vs_soc.png
 - obs_fig7_representative_rmse_bar.png
-- obs_fig8_accuracy_vs_observability.png
+- obs_fig9_accuracy_vs_observability.png
 - obs_fig8_effective_rank_vs_soc.png
 
 Design requirements:
@@ -578,14 +571,13 @@ def main() -> None:
     setup_style()
     metrics_df = pd.read_csv(METRICS_CSV)
     sweep_df = pd.read_csv(SWEEP_CSV)
-    obs_by_method = load_observability_results()
     deep_df = load_deep_observability_results()
 
-    make_ocp_slope_full_soc(obs_by_method)
-    make_spm_rank_vs_soc(obs_by_method)
+    make_ocp_slope_full_soc(deep_df)
+    make_spm_rank_vs_soc(deep_df)
     make_spm_sigma_nz_vs_soc(deep_df)
     make_spm_rank_fraction_vs_states(sweep_df)
-    make_pade_rank_vs_soc(obs_by_method)
+    make_pade_rank_vs_soc(deep_df)
     make_pade_sigma_nz_vs_soc(deep_df)
     make_representative_rmse_bar(metrics_df)
     make_accuracy_vs_observability(metrics_df)

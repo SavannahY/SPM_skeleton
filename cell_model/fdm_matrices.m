@@ -1,88 +1,53 @@
 function [A, B] = fdm_matrices(param, nstates_electrode)
-%FDM_MATRICES Build A and B matrices for solid diffusion (Alternative FDM)
+% FDM_MATRICES - Construct Finite Difference Method matrices for SPM
 %
-% Target form used in your project:
-%   xdot = A*x - B*Iapp
+% DESCRIPTION:
+%   Constructs the A and B matrices for the ODE system: dc/dt = A*c + B*I
+%   for spherical diffusion using Finite Difference Method.
+%   State variable is concentration c_s [mol/m³], not stoichiometry theta.
 %
-% A matches the Recitation Eq.(16)-(18) stencil (TA board).
-% B is nonzero only at the surface node of each electrode.
-
-N = nstates_electrode;
-if N < 3
-    error('nstates_electrode must be >= 2');
-end
-
-% Build dimensionless stencil M (same for both electrodes)
-M = build_M_altFDM(N);
-
-% Scale into each electrode block: (Ds/Rs^2)*(1/dr^2)*M
-% An = (param.Dsn/(param.Rsn^2)) * (1/(param.dr_n^2)) * M;
-% Ap = (param.Dsp/(param.Rsp^2)) * (1/(param.dr_p^2)) * M;
-
-
-dr = 1/(N-1);
-
-An = (param.Dsn/(param.Rsn^2)) * (1/(dr^2)) * M;
-Ap = (param.Dsp/(param.Rsp^2)) * (1/(dr^2)) * M;
-
-
-
-A = blkdiag(An, Ap);
-
-% Build B (only surface node nonzero)
-Bn = sparse(N,1);
-Bp = sparse(N,1);
-
-% Midterm sign convention for discharge I>0:
-% g_n = +1 (anode), g_p = -1 (cathode)
-g_n = +1;
-g_p = -1;
-
-% Bn(end) = (2/param.dr_n) * (1 + 1/(N-1)) * (g_n/(3*param.epsn*param.Acell*param.Ln*param.F));
-% Bp(end) = (2/param.dr_p) * (1 + 1/(N-1)) * (g_p/(3*param.epsp*param.Acell*param.Lp*param.F));
-
-Bn(end) = (2/dr) * (1 + 1/(N-1)) * (g_n/(3*param.epsn*param.Acell*param.Ln*param.F));
-Bp(end) = (2/dr) * (1 + 1/(N-1)) * (g_p/(3*param.epsp*param.Acell*param.Lp*param.F));
-
-
-
-B = [Bn; Bp];
-
-end
-
-
-function M = build_M_altFDM(N)
-% Dimensionless stencil from Eq.(16)-(18)
-% IMPORTANT: spdiags expects the +/-1 diagonal columns shifted/padded.
-
-lower_des = zeros(N,1);     % desired A(i,i-1) coefficients stored at row i
-main      = -2*ones(N,1);   % desired A(i,i)
-upper_des = zeros(N,1);     % desired A(i,i+1) coefficients stored at row i
-
-% Center node i=1: -6*c1 + 6*c2
-main(1)      = -6;
-upper_des(1) =  6;
-
-% Interior i=2..N-1
-if N > 2
-    i = (2:N-1)';
-    lower_des(i) = 1 - 1./(i-1);
-    upper_des(i) = 1 + 1./(i-1);
-end
-
-% Surface i=N: 2*c_{N-1} - 2*c_N
-lower_des(N) = 2;
-main(N)      = -2;
-
-% --- KEY FIX: align for spdiags ---
-% In MATLAB spdiags construction, the column vectors are aligned with zeros
-% at positions where the diagonal doesn't exist.
+% PHYSICS:
+%   PDE: ∂c_{s,j}/∂t = D_{s,j}/r² ∂/∂r(r² ∂c_{s,j}/∂r), j = n, p
+%   BC at r=0: ∂c_{s,j}/∂r = 0 (symmetry)
+%   BC at r=R: D_{s,j} ∂c_{s,j}/∂r = -I_app * g(I_app) / (a_{s,j} * A_cell * L_j * F)
+%   where a_{s,j} = 3*eps_j/R_{s,j} and g(I_app) = -1 for cathode, +1 for anode
 %
-% For d = -1 (subdiagonal): element for (i,i-1) should be placed in row i-1 of the spdiags column.
-% For d = +1 (superdiagonal): element for (i,i+1) should be placed in row i+1 of the spdiags column.
-lower = [lower_des(2:N); 0];         % shift UP so row3->2 uses lower(2), etc.
-upper = [0; upper_des(1:N-1)];       % shift DOWN so row1->2 uses upper(2), etc.
+% INPUTS:
+%   param             - Parameter structure with diffusivities and geometry
+%   nstates_electrode - Number of spatial nodes per electrode [-]
+%
+% OUTPUTS:
+%   A - State matrix [1/s] for dc/dt = A*c + B*I
+%   B - Input matrix [mol/(m³·A·s)] for dc/dt = A*c + B*I
 
-M = spdiags([lower, main, upper], [-1 0 1], N, N);
+    % Construct diffusion matrix for anode
+    j_values = (1:nstates_electrode)';
+
+    above_diagonals = (1.0 + 0.5./(j_values-1)).^2;
+    on_diagonals = (2.0 + 0.5./(j_values-1).^2);
+    below_diagonals = (1.0 - 0.5./(j_values-1)).^2;
+
+    D_n = spdiags([circshift(below_diagonals, -1), -on_diagonals, circshift(above_diagonals, 1)], [-1, 0, 1], nstates_electrode, nstates_electrode);
+    D_n(end, end-1) = -D_n(end,end); D_n(1, 1) = -6.0; D_n(1, 2) = 6.0;
+    D_n = (param.Dsn./(param.Rsn.^2)./(param.dr_n.^2)).*D_n;
+
+    % Construct diffusion matrix for cathode
+    D_p = spdiags([circshift(below_diagonals, -1), -on_diagonals, circshift(above_diagonals, 1)], [-1, 0, 1], nstates_electrode, nstates_electrode);
+    D_p(end, end-1) = -D_p(end,end); D_p(1, 1) = -6.0; D_p(1, 2) = 6.0;
+    D_p = (param.Dsp./(param.Rsp.^2)./(param.dr_p.^2)).*D_p;
+    
+    % Complete A matrix (state matrix)
+    A = blkdiag(D_n, D_p); 
+
+    % Construct B vector (input matrix)
+    % BC: D_s * dc/dr|_{r=R} = -I_app * g(I_app) / (a_s * A_cell * L * F)
+    % where a_s = 3*eps/R_s and g = +1 for anode (n), -1 for cathode (p)
+    % Discretized: incorporates the flux BC into the last node equation
+    Nr = nstates_electrode;
+    B = zeros(2*nstates_electrode, 1);
+    % Anode: g(I_app) = +1, flux enters particle during discharge
+    B(nstates_electrode) = 2.0.*((1.0 + 0.5./(Nr-1)).^2).*1.0./(param.epsn.*param.Ln.*param.Acell.*param.F)./(3.0.*param.dr_n);
+    % Cathode: g(I_app) = -1, flux leaves particle during discharge
+    B(end) = -2.0.*((1.0 + 0.5./(Nr-1)).^2).*1.0./(param.epsp.*param.Lp.*param.Acell.*param.F)./(3.0.*param.dr_p);
 
 end

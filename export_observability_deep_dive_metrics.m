@@ -379,7 +379,7 @@ ylabel('Effective rank', 'FontSize', 16, 'FontWeight', 'bold');
 title('Padé Family: Normalized vs Raw Effective Rank', 'FontSize', 20, 'FontWeight', 'bold');
 grid on;
 
-exportgraphics(fig, fullfile(fig_dir, 'obs_fig9_pade_normalized_vs_raw.png'), 'Resolution', 200);
+exportgraphics(fig, fullfile(fig_dir, 'obs_appendix_pade_normalized_vs_raw.png'), 'Resolution', 200);
 close(fig);
 end
 
