@@ -21,14 +21,16 @@ OPTION1_DIR = ROOT / "master_output_dir" / "option1"
 METRICS_CSV = OPTION1_DIR / "option1_metrics.csv"
 OUT_DIR = OPTION1_DIR / "python_report" / "figures_part1"
 
-PART1_METHODS = ["FDM", "FVM-S1", "FVM-S2"]
+PART1_METHODS = ["FDM", "FVM-S0", "FVM-S1", "FVM-S2"]
 COLORS = {
     "FDM": "#0072B2",
+    "FVM-S0": "#D55E00",
     "FVM-S1": "#E69F00",
     "FVM-S2": "#7A3E9D",
 }
 MARKERS = {
     "FDM": "o",
+    "FVM-S0": "s",
     "FVM-S1": "D",
     "FVM-S2": "^",
 }
